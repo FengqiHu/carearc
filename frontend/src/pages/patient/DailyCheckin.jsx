@@ -19,12 +19,18 @@ function Card({ children, title, className = '' }) {
 const PAIN_EMOJIS = ['😊','😊','🙂','🙂','😐','😐','😟','😟','😣','😰','😰']
 const SIDE_EFFECTS = ['Nausea', 'Dizziness', 'Constipation', 'Fatigue', 'Headache', 'Sweating', 'Insomnia', 'None']
 
-function ScoreSlider({ value, onChange, min = 0, max = 10, label, leftLabel, rightLabel }) {
+function ScoreSlider({ value, onChange, min = 0, max = 10, label, leftLabel, rightLabel, invert = false }) {
   const pct = ((value - min) / (max - min)) * 100
   let trackColor = '#dedee5'
-  if (value <= 3) trackColor = '#14be8b'
-  else if (value <= 6) trackColor = '#f59e0b'
-  else trackColor = '#ef4444'
+  if (invert) {
+    if (value >= 7) trackColor = '#14be8b'
+    else if (value >= 4) trackColor = '#f59e0b'
+    else trackColor = '#ef4444'
+  } else {
+    if (value <= 3) trackColor = '#14be8b'
+    else if (value <= 6) trackColor = '#f59e0b'
+    else trackColor = '#ef4444'
+  }
 
   return (
     <div>
@@ -337,6 +343,7 @@ export default function DailyCheckin() {
             label="0 = Very low, 10 = Excellent"
             leftLabel="Very low"
             rightLabel="Excellent"
+            invert
           />
         </Card>
 
@@ -349,6 +356,7 @@ export default function DailyCheckin() {
             label="0 = Very poor, 10 = Excellent"
             leftLabel="Very poor"
             rightLabel="Excellent"
+            invert
           />
         </Card>
 
