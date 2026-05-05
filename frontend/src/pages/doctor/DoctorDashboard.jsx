@@ -146,11 +146,13 @@ export default function DoctorDashboard() {
         const res = await doctor.getPatients()
         if (cancelled) return
         const list = res.data?.patients || res.data || []
-        const sorted = [...(Array.isArray(list) ? list : [])].sort((a, b) => {
-          const al = (a.risk_level || a.level || 'low').toLowerCase()
-          const bl = (b.risk_level || b.level || 'low').toLowerCase()
-          return (RISK_ORDER[al] ?? 3) - (RISK_ORDER[bl] ?? 3)
-        })
+        const normalized = (Array.isArray(list) ? list : []).map(p => ({
+          ...p,
+          risk_level: (p.latestRiskAssessment?.risk_level || p.risk_level || p.level || 'low').toLowerCase(),
+        }))
+        const sorted = [...normalized].sort((a, b) =>
+          (RISK_ORDER[a.risk_level] ?? 3) - (RISK_ORDER[b.risk_level] ?? 3)
+        )
         setPatients(sorted)
       } catch (err) {
         if (!cancelled) setError('Failed to load patient queue. Please refresh.')

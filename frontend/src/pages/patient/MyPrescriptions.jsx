@@ -1,6 +1,18 @@
 import React, { useState, useEffect } from 'react'
 import { patient as patientApi } from '../../api/client'
 
+function fmtDate(str) {
+  if (!str) return '—'
+  return new Date(str).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+}
+
+function calcEndDate(startDate, durationDays) {
+  if (!startDate || !durationDays) return null
+  const end = new Date(startDate)
+  end.setDate(end.getDate() + durationDays)
+  return end
+}
+
 function Card({ children, className = '' }) {
   return (
     <div className={`bg-white rounded-2xl p-6 ${className}`}
@@ -157,11 +169,26 @@ function PrescriptionCard({ prescription: p }) {
           <DaysRemaining startDate={p.start_date} durationDays={p.duration_days} />
         </div>
 
+        {/* Dosing summary box */}
+        <div className="mt-4 rounded-xl px-4 py-3"
+          style={{ background: p.is_active ? 'rgba(29,78,216,0.06)' : '#f8f9fc', border: `1px solid ${p.is_active ? 'rgba(29,78,216,0.15)' : '#ebebf0'}` }}>
+          <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: p.is_active ? '#1d4ed8' : '#9497a9' }}>
+            How to take
+          </p>
+          <p className="text-sm font-semibold" style={{ color: '#101114' }}>
+            {p.medication_name} {p.dosage}
+          </p>
+          <p className="text-sm mt-0.5" style={{ color: '#686b82' }}>
+            {p.frequency}
+            {p.total_pills != null && ` · ${p.total_pills} pills total`}
+          </p>
+        </div>
+
         {/* Key info chips */}
         <div className="flex flex-wrap gap-2 mt-3">
-          <InfoChip label="Start" value={p.start_date} />
+          <InfoChip label="Start" value={fmtDate(p.start_date)} />
+          <InfoChip label="End" value={(() => { const e = calcEndDate(p.start_date, p.duration_days); return e ? fmtDate(e.toISOString()) : '—' })()} />
           <InfoChip label="Duration" value={`${p.duration_days} days`} />
-          {p.total_pills != null && <InfoChip label="Total pills" value={p.total_pills} />}
           <InfoChip label="Refills" value={p.refills_allowed || '0'} />
         </div>
       </div>
@@ -172,7 +199,7 @@ function PrescriptionCard({ prescription: p }) {
           {p.instructions && (
             <div className="mt-4">
               <p className="text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: '#9497a9' }}>
-                Instructions
+                Instructions from your doctor
               </p>
               <p className="text-sm leading-relaxed" style={{ color: '#101114' }}>{p.instructions}</p>
             </div>

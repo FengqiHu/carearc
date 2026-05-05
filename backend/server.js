@@ -10,7 +10,7 @@ const path = require('path');
 // App setup
 // ---------------------------------------------------------------------------
 const app = express();
-const PORT = process.env.PORT || 5001;
+const PORT = process.env.PORT || 3000;
 
 // CORS: allow Vite dev server
 app.use(cors({

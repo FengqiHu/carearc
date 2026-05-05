@@ -129,6 +129,7 @@ export default function DailyCheckin() {
     try {
       await patient.submitCheckin({
         ...form,
+        medication_adherence: form.medication_taken,
         side_effects: form.side_effects.join(', '),
       })
       setSuccess(true)

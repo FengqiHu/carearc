@@ -55,11 +55,12 @@ const FREQUENCY_OPTIONS = [
 ]
 
 const TABS = [
-  { id: 'overview',  label: 'Overview'          },
-  { id: 'checkins',  label: 'Check-in History'  },
-  { id: 'assessments', label: 'AI Assessments'  },
-  { id: 'notes',     label: 'Clinical Notes'    },
-  { id: 'followups', label: 'Follow-up Actions' },
+  { id: 'overview',      label: 'Overview'          },
+  { id: 'prescriptions', label: 'Prescriptions'     },
+  { id: 'checkins',      label: 'Check-in History'  },
+  { id: 'assessments',   label: 'AI Assessments'    },
+  { id: 'notes',         label: 'Clinical Notes'    },
+  { id: 'followups',     label: 'Follow-up Actions' },
 ]
 
 // ---------------------------------------------------------------------------
@@ -385,6 +386,7 @@ export default function PatientDetail() {
 
   // Prescription form
   const [showPrescForm, setShowPrescForm] = useState(false)
+  const [deactivatingPresc, setDeactivatingPresc] = useState(null)
 
   // Note form
   const [noteForm,     setNoteForm]     = useState({ note_type: 'clinician_note', content: '' })
@@ -567,6 +569,15 @@ export default function PatientDetail() {
     } finally {
       setFuLoading(false)
     }
+  }
+
+  async function handleDeactivatePresc(prescId) {
+    setDeactivatingPresc(prescId)
+    try {
+      await doctor.updatePrescription(prescId, { is_active: 0 })
+      await loadPrescriptions()
+    } catch { /* silent */ }
+    finally { setDeactivatingPresc(null) }
   }
 
   async function handleCompleteFollowUp(id) {
@@ -896,7 +907,160 @@ export default function PatientDetail() {
           )}
 
           {/* ============================================================= */}
-          {/* TAB 2 — CHECK-IN HISTORY                                       */}
+          {/* TAB 2 — PRESCRIPTIONS                                          */}
+          {/* ============================================================= */}
+          {activeTab === 'prescriptions' && (
+            <div className="space-y-5">
+              {/* Create button + form */}
+              <div className="flex items-center justify-between">
+                <p className="font-semibold text-sm" style={{ color: '#101114' }}>
+                  All Prescriptions ({prescriptions.length})
+                </p>
+                <button
+                  onClick={() => setShowPrescForm((v) => !v)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-white"
+                  style={{ background: '#1d4ed8' }}
+                >
+                  {showPrescForm ? '✕ Cancel' : (
+                    <>
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+                        <path d="M12 5V19M5 12H19" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/>
+                      </svg>
+                      New Prescription
+                    </>
+                  )}
+                </button>
+              </div>
+
+              {showPrescForm && (
+                <div className="p-5 rounded-2xl" style={{ background: '#f8f9fc', border: '1.5px solid #dedee5' }}>
+                  <p className="font-semibold text-sm mb-4" style={{ color: '#101114' }}>New Prescription</p>
+                  <PrescriptionForm
+                    patientId={patientId}
+                    onSuccess={async () => {
+                      setShowPrescForm(false)
+                      await loadPrescriptions()
+                    }}
+                    onCancel={() => setShowPrescForm(false)}
+                  />
+                </div>
+              )}
+
+              {prescriptions.length === 0 ? (
+                <div className="text-center py-12">
+                  <span className="text-4xl block mb-3">💊</span>
+                  <p className="font-medium" style={{ color: '#101114' }}>No prescriptions yet</p>
+                  <p className="text-sm mt-1" style={{ color: '#9497a9' }}>
+                    Create the first prescription using the button above.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {prescriptions.map((presc) => {
+                    const isActive = presc.is_active === 1 || presc.is_active === true
+                    const endDate = presc.start_date && presc.duration_days
+                      ? new Date(new Date(presc.start_date).getTime() + presc.duration_days * 86400000)
+                      : null
+                    return (
+                      <div
+                        key={presc.id}
+                        className="rounded-2xl overflow-hidden"
+                        style={{ border: `1.5px solid ${isActive ? 'rgba(29,78,216,0.25)' : '#dedee5'}`, background: isActive ? 'rgba(29,78,216,0.02)' : '#fafafa' }}
+                      >
+                        {/* Card header */}
+                        <div className="px-5 py-4 flex items-start justify-between gap-3 flex-wrap">
+                          <div className="flex items-start gap-3">
+                            <span className="text-2xl mt-0.5">💊</span>
+                            <div>
+                              <div className="flex items-center gap-2 flex-wrap mb-1">
+                                <p className="font-bold text-base" style={{ color: '#101114' }}>
+                                  {presc.medication_name}
+                                </p>
+                                <span className="font-semibold text-sm" style={{ color: '#1d4ed8' }}>
+                                  {presc.dosage}
+                                </span>
+                                <span
+                                  className="px-2 py-0.5 rounded-lg text-xs font-semibold"
+                                  style={isActive
+                                    ? { background: 'rgba(20,158,97,0.14)', color: '#026b3f' }
+                                    : { background: 'rgba(104,107,130,0.12)', color: '#686b82' }}
+                                >
+                                  {isActive ? '● Active' : 'Completed'}
+                                </span>
+                              </div>
+                              <p className="text-sm" style={{ color: '#9497a9' }}>{presc.frequency}</p>
+                            </div>
+                          </div>
+
+                          {isActive && (
+                            <button
+                              onClick={() => handleDeactivatePresc(presc.id)}
+                              disabled={deactivatingPresc === presc.id}
+                              className="text-xs px-3 py-1.5 rounded-xl font-semibold flex-shrink-0"
+                              style={{ background: 'rgba(220,38,38,0.08)', color: '#991b1b', border: '1px solid rgba(220,38,38,0.20)', cursor: deactivatingPresc === presc.id ? 'not-allowed' : 'pointer' }}
+                            >
+                              {deactivatingPresc === presc.id ? 'Deactivating…' : 'Mark Completed'}
+                            </button>
+                          )}
+                        </div>
+
+                        {/* Details grid */}
+                        <div className="px-5 pb-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
+                          <div>
+                            <p className="text-xs font-semibold uppercase tracking-wider mb-0.5" style={{ color: '#9497a9' }}>Start Date</p>
+                            <p className="text-sm font-medium" style={{ color: '#101114' }}>
+                              {presc.start_date ? new Date(presc.start_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-xs font-semibold uppercase tracking-wider mb-0.5" style={{ color: '#9497a9' }}>End Date</p>
+                            <p className="text-sm font-medium" style={{ color: '#101114' }}>
+                              {endDate ? endDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-xs font-semibold uppercase tracking-wider mb-0.5" style={{ color: '#9497a9' }}>Duration</p>
+                            <p className="text-sm font-medium" style={{ color: '#101114' }}>{presc.duration_days} days</p>
+                          </div>
+                          <div>
+                            <p className="text-xs font-semibold uppercase tracking-wider mb-0.5" style={{ color: '#9497a9' }}>Total Pills</p>
+                            <p className="text-sm font-medium" style={{ color: '#101114' }}>
+                              {presc.total_pills != null ? presc.total_pills : '—'}
+                            </p>
+                          </div>
+                        </div>
+
+                        {presc.instructions && (
+                          <div className="px-5 pb-4">
+                            <p className="text-xs font-semibold uppercase tracking-wider mb-1" style={{ color: '#9497a9' }}>Patient Instructions</p>
+                            <p className="text-sm" style={{ color: '#101114' }}>{presc.instructions}</p>
+                          </div>
+                        )}
+
+                        {presc.monitoring_notes && (
+                          <div className="px-5 pb-4">
+                            <div className="px-4 py-3 rounded-xl" style={{ background: 'rgba(245,158,11,0.10)', border: '1px solid rgba(245,158,11,0.20)' }}>
+                              <p className="text-xs font-semibold mb-1" style={{ color: '#92400e' }}>Monitoring Notes</p>
+                              <p className="text-sm" style={{ color: '#92400e' }}>{presc.monitoring_notes}</p>
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="px-5 pb-3">
+                          <p className="text-xs" style={{ color: '#b0b3c1' }}>
+                            Prescribed {fmtDateTime(presc.created_at)} · Refills: {presc.refills_allowed ?? 0}
+                          </p>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ============================================================= */}
+          {/* TAB 3 — CHECK-IN HISTORY                                       */}
           {/* ============================================================= */}
           {activeTab === 'checkins' && (
             <div className="space-y-6">

@@ -67,7 +67,7 @@ Create `backend/.env`:
 ```
 OPENAI_API_KEY=sk-...
 JWT_SECRET=your_secret_here
-PORT=5001
+PORT=3000
 ```
 
 Start the server (auto-seeds demo data on first run):
